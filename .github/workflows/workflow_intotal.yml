@@ -155,12 +155,24 @@ jobs:
         if: hashFiles('pom.xml') != ''
         run: mvn clean package -DskipTests
 
-      # 构建容器
+      # 检查是否有 Dockerfile（设置一个环境变量）
+      - name: Check if Dockerfile exists
+        id: check_dockerfile
+        run: |
+          if [ -f Dockerfile ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      # 如果有dockerfile就构建容器
       - name: Build Docker Image from Current App
+        if: steps.check_dockerfile.outputs.exists == 'true'
         run: docker build -t my-app:${{ github.sha }} .
 
-      # 这是 docker image 的 扫描, 扫描 docker image 中的漏洞
+      # Trivy docker image 的 扫描, 扫描 docker image 中的漏洞
       - name: Run Trivy on Built Image
+        if: steps.check_dockerfile.outputs.exists == 'true'
         uses: aquasecurity/trivy-action@0.28.0
         env:
           TRIVY_TIMEOUT: 15m # 加到15分钟
